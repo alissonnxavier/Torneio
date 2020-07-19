@@ -1,4 +1,8 @@
-<?php if(!class_exists('Rain\Tpl')){exit;}?><div class="container" style="width: 40rem" style="font-family: Impact, Charcoal, sans-serif;">
+<?php if(!class_exists('Rain\Tpl')){exit;}?><br>
+<br><br><br><br><br>
+
+
+<div class="container" style="width: 20rem" style="font-family: Impact, Charcoal, sans-serif;">
 
 	<?php if( $var["0"]==10 ){ ?>
 		<div class="alert alert-success"  style="font-family: Impact, Charcoal, sans-serif;">

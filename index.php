@@ -1,9 +1,11 @@
 <?php
 
+require_once("funcoestpl.php");
 require_once("vendor/autoload.php");
 require_once("vender/autoload.php");
 require_once("config.php");
 session_start();
+date_default_timezone_set("America/Sao_Paulo");
 
 use Rain\Tpl;
 
@@ -11,18 +13,30 @@ $app = new \Slim\Slim();
 
 $app->get("/", function(){
 
+    $data = new DateTime();
+    $hoje = $data->format("d/m/y");
     $logado = 0;
     $inscrito =0;
+    $count = 0;
+    $jogadoresoitavas = array();
+    $user = new Usuario();
+    $tor = new Torneio();
+    $torneio = $tor->buscaTorneio();
+
+    if($user->verificaquantidade() > 7){
+
+        $count = 2;
+    }
     
      if(isset($_SESSION['id'])){
-        $user = new Usuario();
+        
         $result = $user->verificacaoInscricao($_SESSION['id']);
 
         if($result != 'a'){
 
             if($result['idjogador'] == $_SESSION['id']) {
 
-                $_SESSION['inscritocv8'] = 2;
+                $_SESSION['idtorneio'] = $result['idtorneio'];
             }
     }}
     
@@ -30,11 +44,15 @@ $app->get("/", function(){
         $logado = $_SESSION['logado'];
     }
 
-    if(isset($_SESSION['inscritocv8'])){
-        $inscrito = $_SESSION['inscritocv8'];
+    if(isset($_SESSION['idtorneio'])){
+        $inscrito = $_SESSION['idtorneio'];
     }
 
-    $var = array($logado, $inscrito);
+    $qtd = $user->verificaquantidade();
+
+    $jogadoresoitavas = $user->jogadoresoitavas();
+
+    $var = array($logado, $inscrito, $jogadoresoitavas, $count, $torneio, $hoje);
 
     $tpl = new Template($var);
 
@@ -86,8 +104,8 @@ $app->post("/cadastrado", function(){
 
     $usuario = new Usuario();
 
-    $usuario->cadastro($_POST['email'], $_POST['nome'], $_POST['password'], $_POST['tag']);
-    
+    $usuario->cadastro($_POST['email'], $_POST['nome'], $_POST['password'], $_POST['tag'], $_POST['cv']);
+    session_unset();
     $_SESSION["cadastrado"] = 10;
     header("location: /slim/login");
     exit;
@@ -103,36 +121,17 @@ $app->get("/sair", function(){
 $app->post("/logado", function(){
 
     $usuario = new Usuario();
-    $user = $usuario->login($_POST['email']);
+    $user = $usuario->login($_POST['email'], $_POST['password']);
 
-    if($_POST['password'] === $user['dessenha']){
-
-        session_unset();
-        $_SESSION['logado'] = 5;
-
-        if(isset($_SESSION['logado'])){
-
-            $usuario->setNome($user['usernome']);
-            $usuario->setId($user['idusuario']);
-
-            $_SESSION['nome'] = $usuario->getNome();
-            $_SESSION['id'] = $usuario->getId();
-
-        }
-
-        header("location: /slim");
-        exit;
-    } else {
-
-        $_SESSION["usuarioincorreto"] = 5;
-        header("location: /slim/login");
-        exit;
-    }
 });
 
-$app->get("/inscrito", function(){
+$app->post("/inscrito", function(){
 
     $user = new Usuario();
+
+    $quantidade = $user->verificaquantidade();
+    
+    $cv = $_POST['cv'];
 
     if(isset($_SESSION['logado'])){
 
@@ -144,18 +143,20 @@ $app->get("/inscrito", function(){
 
                 if($result['idjogador'] == $_SESSION['id']) {
 
-                    $_SESSION['inscritocv8'] = 2;
-                    echo " voce ja esta cadastrado";
                     header("location: /slim");
                     exit;
                 }
 
             } else{
-
-                    $user->inscricao($_SESSION['nome'], $_SESSION['id']);
-                    $_SESSION['inscritocv8'] = 2;
-                    header("location: /slim");
-                    exit;
+                    if($quantidade < 8 && $cv == $_SESSION['cv']){
+                        $user->inscricao($_SESSION['nome'], $_SESSION['id'], $_POST['idtorneio']);
+                        $_SESSION['idtorneio'] = $_POST['idtorneio'];
+                        header("location: /slim");
+                        exit;
+                    } else {
+                        header("location: /slim");
+                        exit;
+                    }
                 }
             }
     } else {
@@ -165,6 +166,33 @@ $app->get("/inscrito", function(){
         exit;
     }
     
+});
+
+$app->get("/adicionar-torneio", function(){
+
+    $tor = new Torneio();
+    $var = $tor->buscaTorneio();
+    
+    
+    $tpl = new Template($var, "adicionartorneio");
+   
+});
+
+$app->post("/criatorneio", function(){
+
+    $torneio = new Torneio();
+    $torneio->criatorneio($_POST['cv'], $_POST['data'], $_POST['hora']);
+    
+    header("location: /slim/adicionar-torneio");
+    exit;
+});
+
+$app->post("/deleta-torneio", function(){
+
+    $torneio = new Torneio();
+    $torneio->deletaTorneio($_POST['id']);
+    header("location: /slim/adicionar-torneio");
+    exit;
 });
 
 $app->run();
